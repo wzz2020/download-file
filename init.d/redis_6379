@@ -2,8 +2,9 @@
 
 EXEC=/usr/local/redis/bin/redis-server
 CLIEXEC=/usr/local/redis/bin/redis-cli
-PIDFILE=/var/run/redis_6379.pid
 CONFIG_FILE="/usr/local/redis/etc/redis.conf"
+
+PIDFILE=`awk '/^[[:blank:]]*pidfile\s/ { print $2 }' $CONFIG_FILE | tail -n1`
 HOST=`awk '/^[[:blank:]]*bind/ { print $2 }' $CONFIG_FILE | tail -n1`
 PORT=`awk '/^[[:blank:]]*port/ { print $2 }' $CONFIG_FILE | tail -n1`
 PASS=`awk '/^[[:blank:]]*requirepass/ { print $2 }' $CONFIG_FILE | tail -n1`
@@ -39,21 +40,16 @@ case "$1" in
             else
                $CLIEXEC -h $HOST -p $PORT $ADDITIONAL_PARAMS shutdown 2>/dev/null
             fi
-            while [ -x /proc/${PID} ]
-            do
-               echo "Waiting for Redis to shutdown ..."
-               sleep 1
-            done
-            echo "Redis stopped"
         fi
         ;;
     status)
-        PID=$(cat $PIDFILE)
-        if [ ! -x /proc/${PID} ]
+        # PID=$(cat $PIDFILE)
+        # if [ ! -x /proc/${PID} ]
+        if [ ! -f $PIDFILE ]
         then
-            echo 'Redis is not running'
+           echo -e "\033[32m Redis is not running  \033[0m"
         else
-            echo "Redis is running ($PID)"
+           echo -e "\033[32m Redis is running. pid is `cat $PIDFILE` \033[0m"
         fi
         ;;
     restart)
