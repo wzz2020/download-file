@@ -4,8 +4,13 @@
 EXEC=/usr/local/redis/bin/redis-server
 CLIEXEC=/usr/local/redis/bin/redis-cli
 PIDFILE=/var/run/redis-server.pid
-CONF="/usr/local/redis/etc/redis.conf"
-REDISPORT="6379"
+CONFIG_FILE="/usr/local/redis/etc/redis.conf"
+
+HOST=`awk '/^[[:blank:]]*bind/ { print $2 }' $CONFIG_FILE | tail -n1`
+PORT=`awk '/^[[:blank:]]*port/ { print $2 }' $CONFIG_FILE | tail -n1`
+PASS=`awk '/^[[:blank:]]*requirepass/ { print $2 }' $CONFIG_FILE | tail -n1`
+SOCK=`awk '/^[[:blank:]]*unixsocket\s/ { print $2 }' $CONFIG_FILE | tail -n1`
+
 ###############
 # SysV Init Information
 # chkconfig: - 58 74
@@ -30,7 +35,7 @@ case "$1" in
             echo "$PIDFILE exists, process is already running or crashed"
         else
             echo "Starting Redis server..."
-            $EXEC $CONF
+            $EXEC $CONFIG_FILE
         fi
         ;;
     stop)
@@ -40,7 +45,12 @@ case "$1" in
         else
             PID=$(cat $PIDFILE)
             echo "Stopping ..."
-            $CLIEXEC -p $REDISPORT shutdown
+			[ -z "$PASS"  ] || ADDITIONAL_PARAMS="-a $PASS"
+            if [ -e "$SOCK" ] ; then
+               $CLIEXEC -s $SOCK $ADDITIONAL_PARAMS shutdown
+            else
+			   $CLIEXEC -h $HOST -p $PORT $ADDITIONAL_PARAMS shutdown
+			fi
             while [ -x /proc/${PID} ]
             do
                 echo "Waiting for Redis to shutdown ..."
